@@ -1,6 +1,25 @@
+> [!IMPORTANT]
+> **VIBECODED USING OPENAI CODEX**
+>
+> This project was built by prompting Codex to write and iterate on the code. It is an experimental personal project.
+
 # Look Away for Omarchy
 
 A small Rust app that reminds you to give your eyes a rest. Built for **Hyprland and the current Quickshell-based Omarchy bar**. The bar menu uses Omarchy’s native panel components and follows its theme, fonts, borders, and spacing. The break screen’s soft gradients and typography take visual inspiration from [LookAway](https://lookaway.com/); this is an independent Linux implementation.
+
+## Screenshots
+
+### Break screen
+
+The actual full-screen Wayland overlay, with its live countdown and break controls.
+
+![Look Away break screen showing the countdown, postpone buttons, and Skip control](docs/screenshots/break-screen.png)
+
+### Omarchy bar menu
+
+The actual menu using Omarchy’s native components and current theme.
+
+<img src="docs/screenshots/menu.png" alt="Omarchy-themed Look Away menu with countdown, short and long breaks, postpone controls, and reminder toggle" width="420">
 
 ## What it does
 
