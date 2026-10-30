@@ -1,0 +1,11 @@
+# Durations accept s, m, h (for example: 20m, 30s, 3m).
+work_duration: 30m
+short_break: 30s
+long_break: 3m
+# Every fourth completed break is long: short, short, short, long.
+# Set to 0 for manual long breaks only.
+long_break_every: 4
+# Show a nonblocking heads-up one minute before the break, for eight seconds.
+# Set either value to 0s to disable it.
+warning_before: 60s
+warning_duration: 8s

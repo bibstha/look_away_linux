@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "local.look-away",
+  "name": "Look Away",
+  "version": "0.1.0",
+  "author": "Look Away Linux contributors",
+  "description": "Eye-break countdown and quick controls",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "Widget.qml" },
+  "barWidget": {
+    "displayName": "Look Away",
+    "category": "Wellbeing",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
