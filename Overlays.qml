@@ -3,9 +3,11 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 
-ShellRoot {
+// The break screen, heads-up and pointer badge, on every connected screen.
+Item {
     id: root
-    SessionState { id: appState }
+    required property var session
+    readonly property var appState: session
     property real cursorX: -1000
     property real cursorY: -1000
     Process {

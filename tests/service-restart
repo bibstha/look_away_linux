@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Runs Service.qml in its own Quickshell, apart from the Omarchy shell, with a
+# private runtime and config directory, and checks commands, a bad config and
+# surviving a restart. It needs a Wayland session, but uses timings too long to
+# show any overlay.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+sandbox="$(mktemp -d)"
+display="${XDG_RUNTIME_DIR:?}/${WAYLAND_DISPLAY:?}"
+pid=""
+
+cleanup() {
+  [[ -n $pid ]] && kill "$pid" 2>/dev/null || true
+  [[ -n $pid ]] && wait "$pid" 2>/dev/null || true
+  rm -rf "$sandbox"
+}
+trap cleanup EXIT
+
+mkdir -p "$sandbox/shell" "$sandbox/run" "$sandbox/config/look-away"
+chmod 700 "$sandbox/run"
+cp "$root"/{Service,Overlays,BreakView,Eye,ActionButton}.qml "$root/Model.js" "$sandbox/shell/"
+cat >"$sandbox/shell/shell.qml" <<'QML'
+import Quickshell
+ShellRoot { Service {} }
+QML
+printf 'work_duration: 20m\n' >"$sandbox/config/look-away/config.yaml"
+
+export XDG_RUNTIME_DIR="$sandbox/run" XDG_CONFIG_HOME="$sandbox/config" WAYLAND_DISPLAY="$display"
+
+ipc() { quickshell -p "$sandbox/shell" ipc call local.look-away "$@"; }
+field() { jq -r ".$1" <<<"$2"; }
+fail() { echo "FAIL: $*" >&2; exit 1; }
+expect() { [[ $2 == "$3" ]] || fail "$1: expected '$3', got '$2'"; }
+
+start() {
+  quickshell -p "$sandbox/shell" >"$sandbox/log" 2>&1 &
+  pid=$!
+  for _ in {1..100}; do
+    ipc status >/dev/null 2>&1 && return
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.1
+  done
+  cat "$sandbox/log" >&2
+  fail "the service did not start"
+}
+
+stop() {
+  kill "$pid"
+  wait "$pid" 2>/dev/null || true
+  pid=""
+}
+
+start
+status="$(ipc status)"
+expect "config is read" "$(field remaining_seconds "$status")" 1200
+expect "reminders start on" "$(field enabled "$status")" true
+
+status="$(ipc snooze 5)"
+expect "snooze adds time" "$(field label "$status")" 25
+status="$(ipc skip)"
+expect "skip outside a break is refused" "$(field error "$status" | cut -c1-4)" Skip
+status="$(ipc disable)"
+expect "disable" "$(field label "$status")" Off
+status="$(ipc status)"
+expect "paused time holds" "$(( $(field remaining_seconds "$status") > 1400 ))" 1
+
+stop
+start
+status="$(ipc status)"
+expect "paused state survives a restart" "$(field enabled "$status")" false
+expect "the countdown survives a restart" "$(( $(field remaining_seconds "$status") > 1400 ))" 1
+
+printf 'work_duraton: 20m\n' >"$XDG_CONFIG_HOME/look-away/config.yaml"
+status="$(ipc reload)"
+expect "a bad reload is refused" "$(field error "$status" | cut -c1-14)" "Reading config"
+status="$(ipc status)"
+expect "a bad reload leaves the timer alone" "$(( $(field remaining_seconds "$status") > 1400 ))" 1
+
+printf 'work_duration: 10m\n' >"$XDG_CONFIG_HOME/look-away/config.yaml"
+status="$(ipc reload)"
+expect "reload starts a fresh session" "$(field remaining_seconds "$status")" 600
+
+ipc enable >/dev/null
+stop
+jq '.saved_at -= 300000' "$XDG_RUNTIME_DIR/look-away-state.json" >"$sandbox/old" && cp "$sandbox/old" "$XDG_RUNTIME_DIR/look-away-state.json"
+printf 'work_duraton: 20m\n' >"$XDG_CONFIG_HOME/look-away/config.yaml"
+start
+status="$(ipc status)"
+expect "old state and a bad config fall back to defaults" "$(field remaining_seconds "$status")" 1800
+
+grep -E 'ERROR|error|unresolvable|TypeError|ReferenceError' "$sandbox/log" >&2 && fail "errors in the log"
+echo "service-restart: ok"
