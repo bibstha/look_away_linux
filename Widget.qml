@@ -14,7 +14,18 @@ Item {
     implicitHeight: bar ? bar.barSize : 30
     function open() { opened = true }
     function close() { opened = false }
-    SessionState { id: appState }
+    // One service per shell: every bar's widget reads the same timer.
+    readonly property var service: bar && bar.shell && typeof bar.shell.serviceFor === "function"
+        ? bar.shell.serviceFor(moduleName) : null
+    readonly property var offline: ({
+        online: false,
+        breaking: false,
+        error: "",
+        state: { enabled: false, phase: "work", remaining_seconds: 0, total_seconds: 1, label: "—", warning: false, skip_allowed: false, skip_wait_seconds: 0, next_break: "short_break" },
+        act: function() {},
+        clock: function() { return "--:--" }
+    })
+    readonly property var appState: service || offline
     Rectangle {
         id: pill
         anchors.centerIn: parent
@@ -141,7 +152,7 @@ Item {
             Text {
                 width: parent.width
                 visible: !appState.online || appState.error !== ""
-                text: appState.online ? appState.error : "Start with: look-away run"
+                text: appState.online ? appState.error : "The Look Away service is not loaded. Try: omarchy restart shell"
                 wrapMode: Text.Wrap
                 color: Commons.Color.urgent
                 font.family: Commons.Style.font.family

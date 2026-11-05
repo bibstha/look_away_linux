@@ -5,7 +5,7 @@
 
 # Look Away for Omarchy
 
-A small Rust app that reminds you to give your eyes a rest. Built for **Hyprland and the current Quickshell-based Omarchy bar**. The bar menu uses Omarchy’s native panel components and follows its theme, fonts, borders, and spacing. The break screen’s soft gradients and typography take visual inspiration from [LookAway](https://lookaway.com/); this is an independent Linux implementation.
+A small Omarchy plugin that reminds you to give your eyes a rest. Built for **Hyprland and the current Quickshell-based Omarchy bar**. The bar menu uses Omarchy’s native panel components and follows its theme, fonts, borders, and spacing. The break screen’s soft gradients and typography take visual inspiration from [LookAway](https://lookaway.com/); this is an independent Linux implementation.
 
 ## Screenshots
 
@@ -30,46 +30,37 @@ The actual menu using Omarchy’s native components and current theme.
 - A click-through badge follows the pointer during the **last 5 seconds**.
 - An opaque Wayland **overlay layer** covers every connected screen during breaks, including the bar and fullscreen apps. It is not a tiled or ordinary fullscreen application window.
 - The break screen displays a large countdown and closes automatically when time is up. Then a fresh work session starts.
-- **Skip in 5s → 4s → 3s → 2s → 1s**, with circular progress, becomes **Skip this break** after five seconds. Rust enforces the delay.
+- **Skip in 5s → 4s → 3s → 2s → 1s**, with circular progress, becomes **Skip this break** after five seconds. The timer enforces the delay.
 - **Wait 1 / 5 / 15 min** in both the bar menu and break overlay. During work this adds to the remaining time; during a break it postpones that same kind of break. Overlay controls unlock after five seconds.
 - Left-click the eye countdown for the menu; right-click to enable/disable reminders. Manual short and long breaks are available in the menu.
 
 This first version has no idle detection, meeting detection, sounds, or analytics. The pointer position is queried locally only during the final countdown; no input is recorded.
 
-## Install and run
+## Install
 
-Requires Rust/Cargo, Quickshell, Hyprland, Python 3, and a systemd user session. On current Omarchy, the desktop dependencies are already present. Install Rust through [rustup](https://rustup.rs/) if needed.
-
-```sh
-./scripts/install.sh
-```
-
-This builds a release binary, installs it to `~/.local/bin/look-away`, installs a bar plugin, backs up `shell.json` before adding the eye widget, and starts a user service. Existing layout entries and YAML settings are preserved. You should see the eye and `30` in the bar.
-
-To also start at future logins:
+Requires an Omarchy version with the Quickshell-based shell. There is nothing to build and no background program to manage: the plugin runs inside the Omarchy shell, so it starts whenever your desktop does.
 
 ```sh
-./scripts/install.sh --autostart
-# Or after installing:
-systemctl --user enable look-away.service
+omarchy plugin add https://github.com/bibstha/look_away_linux.git --enable
 ```
 
-To stop or start:
+Remove it, keeping your YAML configuration:
 
 ```sh
-systemctl --user stop look-away.service
-systemctl --user start look-away.service
+omarchy plugin remove local.look-away --yes
 ```
 
-For development without installation:
+### Upgrading from the Rust version
+
+The app used to be a Rust binary and a systemd user service. If you installed that version, remove it and restart the shell so it notices the plugin's new files:
 
 ```sh
-cargo run -- run
-# Or use accelerated timings in your own config:
-cargo run -- --config /path/to/test.yaml run
+systemctl --user disable --now look-away.service
+rm -f ~/.config/systemd/user/look-away.service ~/.local/bin/look-away
+rm -rf ~/.local/share/look-away
+systemctl --user daemon-reload
+omarchy restart shell
 ```
-
-Only one timer instance can run per desktop runtime directory. Stop the installed service before using `cargo run`. A development instance provides the overlay; the bar widget is installed by the installer.
 
 ## Configuration
 
@@ -86,28 +77,35 @@ warning_duration: 8s
 
 Durations accept units such as `s`, `m`, and `h`. Work and break durations must be between one second and seven days. Set `long_break_every: 0` for manual long breaks only. Set either warning duration to `0s` to disable the heads-up. The pointer badge remains enabled for the final five seconds.
 
-Click **Reload configuration** in the menu, or run `look-away reload`. Reload validates the file and starts a fresh work session; a bad file leaves the running timer intact. Partial YAML files inherit defaults. Unknown keys are rejected to catch typos. A missing file uses defaults.
+Click **Reload configuration** in the menu, or run `omarchy-shell local.look-away reload`. Reload validates the file and starts a fresh work session; a bad file leaves the running timer intact. Partial YAML files inherit defaults. Unknown keys are rejected to catch typos. A missing file uses defaults.
 
 Disabling freezes the work countdown. Disabling during a break dismisses it and prepares a fresh work session; enabling resumes it. An on-demand break enables reminders. Completed short breaks advance the cycle; a completed long break resets it. Skipping or postponing a break does not count it as completed. Restarting the app resets the session and enables reminders. Timing uses a monotonic clock and does not count system suspend as work time on Linux. Desktop locking is not detected in this version.
 
 ## Commands
 
+The menu covers everyday use. The same actions are available from a terminal, or for your own key bindings, while the shell is running:
+
 ```sh
-look-away                     # Same as `look-away run`
-look-away status              # JSON snapshot
-look-away watch               # Streaming newline-delimited JSON
-look-away short-break
-look-away long-break
-look-away snooze 1             # Also accepts 5 or 15; adds minutes
-look-away disable
-look-away enable
-look-away toggle
-look-away skip                 # Only during breaks, after five seconds
-look-away reload
-look-away quit
+omarchy-shell local.look-away status       # JSON snapshot
+omarchy-shell local.look-away shortBreak
+omarchy-shell local.look-away longBreak
+omarchy-shell local.look-away snooze 1     # Also accepts 5 or 15; adds minutes
+omarchy-shell local.look-away disable
+omarchy-shell local.look-away enable
+omarchy-shell local.look-away toggle
+omarchy-shell local.look-away skip         # Only during breaks, after five seconds
+omarchy-shell local.look-away reload
 ```
 
-The service owns the timer; a separate Quickshell frontend draws overlays. The bar is a small Omarchy plugin. Both consume the same Rust state over a private Unix socket under `$XDG_RUNTIME_DIR/look-away/`. The app stops if its frontend exits, so a hidden timer cannot silently count breaks with no overlay. If the installed frontend repeatedly fails, inspect `journalctl --user -u look-away.service`.
+## How it works
+
+Like other service plugins, Look Away has one engine (`Service.qml`) per shell, and each bar's widget reads it. The engine also draws the overlays.
+
+- **Sleep:** the countdown only counts time the machine is awake, so waking a laptop does not start a break.
+- **Shell restarts:** Omarchy restarts its shell after updates, so the timer state is saved under `$XDG_RUNTIME_DIR`. A restart picks up where it left off. A reboot, or saved state older than two minutes, starts a fresh work session. Time while the shell is down does not count.
+- **Crashes:** if the shell stops, so do the timer and overlays, and the bar is gone too, so a hidden timer cannot silently count breaks.
+
+A configuration file with errors is reported in the menu. At startup the plugin runs on defaults; on reload the running timer is left alone.
 
 The overlay is a reminder, not a security lock screen. Hyprland compositor shortcuts remain available.
 
@@ -122,26 +120,20 @@ The compositor integration follows Quickshell's [PanelWindow](https://quickshell
 ## Development and verification
 
 ```sh
-cargo fmt --check
-cargo test
-cargo clippy --all-targets -- -D warnings
-python3 -m unittest discover -s tests -p 'test_*.py'
+./tests/run              # Timer and configuration rules, under Node
+./tests/service-restart  # The real service in a private Quickshell; needs a Wayland session
+omarchy plugin validate .
 ```
 
-Tests cover display boundaries, automatic break cycling, warning timing, disable/resume, five-second skip enforcement, additive snoozing and preserved break types, configuration validation, actual Unix-socket commands and streaming, automatic transitions, failed reload recovery, duplicate-instance rejection, and shutdown cleanup. The graphical frontend is checked separately in a live Hyprland session.
+`tests/run` covers display boundaries, automatic break cycling, warning timing, disable/resume, five-second skip enforcement, additive snoozing and preserved break types, sleep, saved state and configuration validation. `tests/service-restart` covers commands, failed reload recovery and surviving a restart. The bar widget and break screen are checked separately in a live Hyprland session.
 
 Source layout:
 
-- `src/`: Rust timer, YAML validation, daemon, and CLI.
-- `ui/`: Quickshell overlay and Omarchy widget.
-- `scripts/`: reversible user-local installation and bar integration.
+- `Model.js`: timer rules and configuration parsing, with no QML.
+- `Service.qml`: the running timer, saved state and IPC commands.
+- `Overlays.qml`, `BreakView.qml`: the break screen, heads-up and pointer badge.
+- `Widget.qml`: the bar widget and menu.
 
-Remove the installed app with:
-
-```sh
-./scripts/uninstall.sh
-```
-
-This removes its bar entry, user service, binary, and frontend. Your YAML and bar configuration backups are retained.
+To try local changes, copy the plugin files into `~/.config/omarchy/plugins/local.look-away/`. The shell reloads changed files; a file new to that folder needs `omarchy restart shell`.
 
 MIT licensed.
