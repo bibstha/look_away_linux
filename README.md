@@ -47,19 +47,19 @@ omarchy plugin add https://github.com/bibstha/look_away_linux.git --enable
 Remove it, keeping your YAML configuration:
 
 ```sh
-omarchy plugin remove local.look-away --yes
+omarchy plugin remove bibstha.look-away --yes
 ```
 
 ### Upgrading from the Rust version
 
-The app used to be a Rust binary and a systemd user service. If you installed that version, remove it and restart the shell so it notices the plugin's new files:
+The app used to be a Rust binary and a systemd user service under the plugin ID `local.look-away`. If you installed that version, remove it before adding the plugin:
 
 ```sh
 systemctl --user disable --now look-away.service
 rm -f ~/.config/systemd/user/look-away.service ~/.local/bin/look-away
 rm -rf ~/.local/share/look-away
 systemctl --user daemon-reload
-omarchy restart shell
+omarchy plugin remove local.look-away --yes
 ```
 
 ## Configuration
@@ -77,7 +77,7 @@ warning_duration: 8s
 
 Durations accept units such as `s`, `m`, and `h`. Work and break durations must be between one second and seven days. Set `long_break_every: 0` for manual long breaks only. Set either warning duration to `0s` to disable the heads-up. The pointer badge remains enabled for the final five seconds.
 
-Click **Reload configuration** in the menu, or run `omarchy-shell local.look-away reload`. Reload validates the file and starts a fresh work session; a bad file leaves the running timer intact. Partial YAML files inherit defaults. Unknown keys are rejected to catch typos. A missing file uses defaults.
+Click **Reload configuration** in the menu, or run `omarchy-shell bibstha.look-away reload`. Reload validates the file and starts a fresh work session; a bad file leaves the running timer intact. Partial YAML files inherit defaults. Unknown keys are rejected to catch typos. A missing file uses defaults.
 
 Disabling freezes the work countdown. Disabling during a break dismisses it and prepares a fresh work session; enabling resumes it. An on-demand break enables reminders. Completed short breaks advance the cycle; a completed long break resets it. Skipping or postponing a break does not count it as completed. Restarting the app resets the session and enables reminders. Timing uses a monotonic clock and does not count system suspend as work time on Linux. Desktop locking is not detected in this version.
 
@@ -86,15 +86,15 @@ Disabling freezes the work countdown. Disabling during a break dismisses it and 
 The menu covers everyday use. The same actions are available from a terminal, or for your own key bindings, while the shell is running:
 
 ```sh
-omarchy-shell local.look-away status       # JSON snapshot
-omarchy-shell local.look-away shortBreak
-omarchy-shell local.look-away longBreak
-omarchy-shell local.look-away snooze 1     # Also accepts 5 or 15; adds minutes
-omarchy-shell local.look-away disable
-omarchy-shell local.look-away enable
-omarchy-shell local.look-away toggle
-omarchy-shell local.look-away skip         # Only during breaks, after five seconds
-omarchy-shell local.look-away reload
+omarchy-shell bibstha.look-away status       # JSON snapshot
+omarchy-shell bibstha.look-away shortBreak
+omarchy-shell bibstha.look-away longBreak
+omarchy-shell bibstha.look-away snooze 1     # Also accepts 5 or 15; adds minutes
+omarchy-shell bibstha.look-away disable
+omarchy-shell bibstha.look-away enable
+omarchy-shell bibstha.look-away toggle
+omarchy-shell bibstha.look-away skip         # Only during breaks, after five seconds
+omarchy-shell bibstha.look-away reload
 ```
 
 ## How it works
@@ -134,6 +134,6 @@ Source layout:
 - `Overlays.qml`, `BreakView.qml`: the break screen, heads-up and pointer badge.
 - `Widget.qml`: the bar widget and menu.
 
-To try local changes, copy the plugin files into `~/.config/omarchy/plugins/local.look-away/`. The shell reloads changed files; a file new to that folder needs `omarchy restart shell`.
+To try local changes, copy the plugin files into `~/.config/omarchy/plugins/bibstha.look-away/`. The shell reloads changed files; a file new to that folder needs `omarchy restart shell`.
 
 MIT licensed.
