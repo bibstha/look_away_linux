@@ -124,9 +124,9 @@ Item {
     onTriggered: root.save()
   }
 
-  // omarchy-shell local.look-away <command>
+  // omarchy-shell bibstha.look-away <command>
   IpcHandler {
-    target: "local.look-away"
+    target: "bibstha.look-away"
     function status(): string { return JSON.stringify(root.state) }
     function shortBreak(): string { return root.reply("short-break") }
     function longBreak(): string { return root.reply("long-break") }

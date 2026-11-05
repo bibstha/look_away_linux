@@ -28,7 +28,7 @@ printf 'work_duration: 20m\n' >"$sandbox/config/look-away/config.yaml"
 
 export XDG_RUNTIME_DIR="$sandbox/run" XDG_CONFIG_HOME="$sandbox/config" WAYLAND_DISPLAY="$display"
 
-ipc() { quickshell -p "$sandbox/shell" ipc call local.look-away "$@"; }
+ipc() { quickshell -p "$sandbox/shell" ipc call bibstha.look-away "$@"; }
 field() { jq -r ".$1" <<<"$2"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 expect() { [[ $2 == "$3" ]] || fail "$1: expected '$3', got '$2'"; }

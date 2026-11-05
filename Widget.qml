@@ -6,7 +6,7 @@ import qs.Commons as Commons
 Item {
     id: root
     property var bar: null
-    property string moduleName: "local.look-away"
+    property string moduleName: "bibstha.look-away"
     property var settings: ({})
     property bool opened: false
     readonly property bool vertical: bar ? bar.vertical : false
